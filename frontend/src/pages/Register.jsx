@@ -25,6 +25,15 @@ export default function Register() {
     e.preventDefault();
     setError("");
 
+    if (mode === "admin") {
+      if (password !== "ojas2026") {
+        setError("Invalid administrator password");
+        return;
+      }
+      navigate("/admin", { state: { adminAuthed: true } });
+      return;
+    }
+
     if (!name.trim() || !password) {
       setError("Crew name and password are required");
       return;
@@ -76,15 +85,24 @@ export default function Register() {
         <div className="tabs">
           <button type="button" className={mode === "register" ? "tab active" : "tab"} onClick={() => setMode("register")}>NEW CREW</button>
           <button type="button" className={mode === "login" ? "tab active" : "tab"} onClick={() => setMode("login")}>RETURN SAILOR</button>
+          <button type="button" className={mode === "admin" ? "tab active" : "tab"} onClick={() => setMode("admin")}>ADMINISTRATOR</button>
         </div>
-        <input className="input-field" placeholder="Team Name" value={name} onChange={(e) => setName(e.target.value)} />
-        <input className="input-field" placeholder="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+        {mode !== "admin" && (
+          <input className="input-field" placeholder="Team Name" value={name} onChange={(e) => setName(e.target.value)} />
+        )}
+        <input
+          className="input-field"
+          placeholder={mode === "admin" ? "Administrator Password" : "Password"}
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
         {mode === "register" && (
           <input className="input-field" placeholder="Confirm Password" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
         )}
         {error ? <p className="error-text animate-wrongAnswerShake">{error}</p> : null}
         <button className="gold-button" disabled={loading}>
-          {loading ? "LOADING" : "SET SAIL"}
+          {loading ? "LOADING" : mode === "admin" ? "ENTER COMMAND CENTER" : "SET SAIL"}
         </button>
         {loading ? <LoadingSpinner inline label="Anchoring..." /> : null}
       </form>

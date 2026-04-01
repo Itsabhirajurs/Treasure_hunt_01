@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
+import { useLocation } from "react-router-dom";
 import LoadingSpinner from "../components/LoadingSpinner";
 import { supabase } from "../supabaseClient";
 
 export default function Admin() {
+  const location = useLocation();
   const [pass, setPass] = useState("");
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(!!location.state?.adminAuthed);
   const [teams, setTeams] = useState([]);
   const [submissions, setSubmissions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -78,6 +80,14 @@ export default function Admin() {
     return { correct, avg, anomalies };
   }, [submissions]);
 
+  const teamNameById = useMemo(() => {
+    const map = {};
+    teams.forEach((t) => {
+      map[t.id] = t.name;
+    });
+    return map;
+  }, [teams]);
+
   const resetTeam = async (teamId) => {
     await supabase.from("teams").update({ total_score: 0, current_round: 1, badges: [], completed: false }).eq("id", teamId);
     loadData();
@@ -124,7 +134,7 @@ export default function Admin() {
         <h2>Live Submissions</h2>
         {submissions.slice(0, 10).map((s) => (
           <p key={s.id} className={s.anomaly_flagged ? "error-text" : ""}>
-            Team {s.team_id} | Round {s.round_num} | {s.answer_submitted} | {s.is_correct ? "OK" : "NO"} | {s.time_elapsed_seconds}s | {s.score_awarded}
+            Team {teamNameById[s.team_id] || s.team_name || `Crew-${(s.team_id || "").slice(0, 6)}`} | Round {s.round_num} | {s.answer_submitted || "-"} | {s.is_correct ? "OK" : "NO"} | {s.time_elapsed_seconds}s | {s.score_awarded}
           </p>
         ))}
       </section>

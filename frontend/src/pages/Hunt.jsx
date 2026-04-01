@@ -206,6 +206,17 @@ export default function Hunt() {
         </div>
         <MapProgress currentRound={round} />
         <button className="gold-button map-btn" onClick={() => setShowMap(true)}>Open Map Blueprint</button>
+        <section className="hunt-rules-panel pirate-card">
+          <h3>Hunt Rules</h3>
+          <ul>
+            <li>One answer at a time. Read clues carefully.</li>
+            <li>Hints are limited and reduce round score.</li>
+            <li>Speed matters. Faster correct answers score higher.</li>
+            <li>No external help during active round time.</li>
+            <li>Respect fair play. Suspicious times are flagged.</li>
+            <li>Complete all 5 rounds to unlock victory board.</li>
+          </ul>
+        </section>
       </aside>
 
       <section>
@@ -294,8 +305,9 @@ export default function Hunt() {
       <ParticleEffect show={burst} />
 
       <section className="pirate-card deck-widgets">
+        <p className="widget-intro">Interactive deck widgets for engagement and team coordination. They do not change score logic.</p>
         <article className="widget">
-          <h3>Compass Console</h3>
+          <h3>Compass Console (visual)</h3>
           <p>Heading: <strong>{compassState}</strong></p>
           <div className="widget-actions">
             <button className="gold-button" onClick={() => setCompassState("NORTH")}>N</button>
@@ -306,7 +318,7 @@ export default function Hunt() {
         </article>
 
         <article className="widget">
-          <h3>Route Heat</h3>
+          <h3>Route Heat (progress intensity)</h3>
           <p>Intensity rises by round progression.</p>
           <div className="heat-grid">
             {Array.from({ length: 20 }, (_, i) => (
@@ -319,7 +331,7 @@ export default function Hunt() {
         </article>
 
         <article className="widget">
-          <h3>Crew Morale</h3>
+          <h3>Crew Morale (practice slider)</h3>
           <p>{morale}% motivated</p>
           <input
             type="range"
