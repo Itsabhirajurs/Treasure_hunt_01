@@ -1,0 +1,191 @@
+OJAS 2026 - DIGITAL TREASURE HUNT PLATFORM BLUEPRINT
+Date: 2026-04-01
+
+====================================================
+1) SYSTEM OVERVIEW
+====================================================
+This platform is a real-time competitive treasure hunt web app.
+It supports team onboarding, round-wise clue solving, AI-assisted validation,
+progressive hints, scoring, badges, live leaderboard updates, and admin analytics.
+
+Core experience:
+- Team registers/logs in.
+- Team plays 5 rounds.
+- Each submit is evaluated by Gemini + fallback logic.
+- Score is calculated via exponential decay.
+- Badges and progression are stored in Supabase.
+- Leaderboard and admin feed update in real-time.
+
+====================================================
+2) TECH STACK
+====================================================
+Frontend:
+- React + Vite
+- React Router
+- Supabase JS client
+- Context API for game state
+- Pure CSS (pirate/cinematic theme)
+
+Backend:
+- Python Flask
+- Flask-CORS
+- Supabase Python SDK
+- Gemini API (google-generativeai)
+- python-dotenv
+
+Database / Realtime:
+- Supabase PostgreSQL
+- Supabase realtime subscriptions on teams and submissions
+
+====================================================
+3) MAJOR FEATURES IMPLEMENTED
+====================================================
+- Team registration and login with password hash handling.
+- 5-round clue engine with category and difficulty.
+- Answer submission API and scoring logic.
+- Hint API using Gemini oracle prompts.
+- Anomaly detection based on expected round-time ranges.
+- Badge awarding logic integrated into submit flow.
+- Real-time leaderboard subscription.
+- Admin dashboard with live submissions and CSV export.
+- Victory page with final score, rank, and replay action.
+- Responsive pirate-themed UI and animation utilities.
+
+====================================================
+4) GEMINI API USAGE
+====================================================
+A) Semantic Answer Validation
+- Endpoint: POST /api/submit
+- Service: backend/services/gemini_service.py -> validate_answer()
+- Prompt asks Gemini to accept synonyms, abbreviations, minor spelling errors.
+- Fallback path exists if parsing/model fails.
+
+B) Progressive Hint Generation
+- Endpoint: GET /api/hint
+- Service: backend/services/gemini_service.py -> generate_hint()
+- Hint level changes by hint number:
+  1 = cryptic, 2 = helpful, 3 = near-direct.
+
+C) Safety/Fallback Behavior
+- If Gemini unavailable, system uses deterministic fallback hints/checks.
+
+====================================================
+5) SCORING LOGIC
+====================================================
+Implemented in: backend/services/scoring_service.py
+
+Formula:
+raw_score = base * exp(-0.002 * time_elapsed) * hint_penalty * round_multiplier
+
+Where:
+- base = 1000
+- hint_penalty = max(0.1, 1 - 0.20*hints_used)
+- round_multiplier = 1 + (round_number - 1) * 0.3
+- final score = max(10, round(raw_score))
+
+Effect:
+- Faster teams score higher.
+- Hints reduce score.
+- Higher rounds are worth more.
+
+====================================================
+6) ANOMALY DETECTION LOGIC
+====================================================
+Implemented in: backend/services/anomaly_service.py
+
+Expected ranges:
+- Round 1: 20 to 120 sec
+- Round 2: 30 to 180 sec
+- Round 3: 45 to 240 sec
+- Round 4: 60 to 300 sec
+- Round 5: 90 to 400 sec
+
+Rule:
+- If time < 30% of round minimum, flag suspicious.
+
+====================================================
+7) API SURFACE
+====================================================
+Auth:
+- POST /api/register
+- POST /api/login
+
+Game:
+- GET  /api/clue?round=N
+- POST /api/submit
+- GET  /api/hint?round=N&hint_num=K&team_id=X
+
+Admin:
+- GET /api/admin/stats
+- GET /api/admin/teams
+- GET /api/admin/schema-status
+
+System:
+- GET /api/health
+
+====================================================
+8) FRONTEND PAGES AND RESPONSIBILITIES
+====================================================
+Landing:
+- Hero, live team count, CTA navigation
+
+Register:
+- Register/login tabs, validation, SHA-256 hash flow
+
+Hunt:
+- Clue display, timer, hint reveal, answer submission, particle/badge feedback
+
+Leaderboard:
+- Scoreboard + realtime update subscription + movement indicator
+
+Admin:
+- Password gate, stats cards, live feed, reset team, CSV export
+
+Victory:
+- Final score/rank display, confetti, play-again reset
+
+====================================================
+9) RUNTIME CHECKLIST (SMOOTH OPERATION)
+====================================================
+1. Backend .env must have valid:
+   - SUPABASE_URL
+   - SUPABASE_KEY (service role)
+   - GEMINI_API_KEY
+   - FRONTEND_ORIGIN
+
+2. Frontend .env must have valid:
+   - VITE_SUPABASE_URL
+   - VITE_SUPABASE_ANON_KEY
+   - VITE_BACKEND_URL=http://localhost:5000
+
+3. Supabase SQL setup must be executed:
+   - teams, submissions, clues tables
+   - realtime publication for teams + submissions
+
+4. Start backend:
+   cd backend
+   py app.py
+
+5. Start frontend:
+   cd frontend
+   npm run dev
+
+6. Health checks:
+   - GET /api/health should return ok
+   - GET /api/admin/schema-status should return ready=true
+
+====================================================
+10) DEFENSE TALKING POINTS (SHORT)
+====================================================
+- Real-time architecture: Supabase postgres_changes subscriptions.
+- AI intelligence: Gemini semantic validation + dynamic hint generation.
+- Fair scoring: exponential decay + hint penalty + round multipliers.
+- Monitoring: anomaly flagging for suspiciously fast answers.
+- Practical engineering: fallback paths for API/model failures.
+
+====================================================
+11) CURRENT STATUS
+====================================================
+- Core platform scaffold and major logic are implemented.
+- GitHub repository updated with project files (excluding .env).
+- End-to-end API smoke flow has been validated after schema setup.

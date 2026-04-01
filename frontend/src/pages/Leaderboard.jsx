@@ -22,8 +22,9 @@ export default function Leaderboard() {
   useEffect(() => {
     loadTeams();
     const channel = supabase
-      .channel("leaderboard")
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "teams" }, () => {
+      .channel("leaderboard-live")
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "teams" }, (payload) => {
+        setFlashingTeam(payload.new.id);
         loadTeams();
         setTimeout(() => setFlashingTeam(null), 1000);
       })
@@ -52,7 +53,7 @@ export default function Leaderboard() {
   return (
     <main className="page-shell">
       <h1>THE CAPTAIN'S LOG</h1>
-      <p>Live standings in real time</p>
+      <p className="live-line"><span className="live-dot" /> Live standings in real time</p>
       <button className="gold-button" onClick={loadTeams}>Manual Refresh</button>
       <p>Last updated: {updatedAt.toLocaleTimeString()}</p>
 
@@ -68,7 +69,7 @@ export default function Leaderboard() {
             <span>{team.total_score}</span>
             <span>{(team.badges || []).length} badges</span>
             <span>{team.completed ? "Treasure Found" : "Sailing"}</span>
-            <span>{rankMovement[team.id] === "up" ? "UP" : rankMovement[team.id] === "down" ? "DOWN" : "-"}</span>
+            <span>{rankMovement[team.id] === "up" ? "▲" : rankMovement[team.id] === "down" ? "▼" : "—"}</span>
           </article>
         ))}
       </section>

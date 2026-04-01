@@ -21,20 +21,16 @@ export default function Hunt() {
   const [loading, setLoading] = useState(true);
   const [loadingHint, setLoadingHint] = useState(false);
   const [message, setMessage] = useState("");
+  const [messageType, setMessageType] = useState("neutral");
   const [badge, setBadge] = useState(null);
   const [burst, setBurst] = useState(false);
 
   const round = state.team?.current_round || state.round || 1;
   const hintsUsed = useMemo(() => Object.keys(hints).length, [hints]);
 
-  useEffect(() => {
-    if (round > 5) {
-      navigate("/victory");
-      return;
-    }
-
+  const loadClue = (targetRound) => {
     setLoading(true);
-    fetch(`${apiBase}/api/clue?round=${round}`)
+    fetch(`${apiBase}/api/clue?round=${targetRound}`)
       .then((r) => r.json())
       .then((data) => {
         setClue(data);
@@ -42,8 +38,17 @@ export default function Hunt() {
         setAnswer("");
         setHints({});
         setMessage("");
+        setMessageType("neutral");
       })
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    if (round > 5) {
+      navigate("/victory");
+      return;
+    }
+    loadClue(round);
   }, [round, navigate]);
 
   useEffect(() => {
@@ -67,10 +72,12 @@ export default function Hunt() {
 
     if (!data.correct) {
       setMessage("Wrong waters, try again");
+      setMessageType("wrong");
       return;
     }
 
     setMessage(`Plunder secured +${data.score}`);
+    setMessageType("correct");
     const updatedTeam = data.team || {
       ...state.team,
       total_score: state.score + data.score,
@@ -90,7 +97,7 @@ export default function Hunt() {
     setTimeout(() => setBurst(false), 1200);
     setTimeout(() => {
       if ((updatedTeam.current_round || 1) > 5) navigate("/victory");
-      else window.location.reload();
+      else loadClue(updatedTeam.current_round || round + 1);
     }, 2000);
   };
 
@@ -126,7 +133,7 @@ export default function Hunt() {
           placeholder="Enter your answer, sailor"
         />
         <button className="gold-button" onClick={submitAnswer}>SUBMIT ANSWER</button>
-        <p>{message}</p>
+        <p className={`result-pill ${messageType}`}>{message}</p>
       </section>
 
       <aside>

@@ -179,6 +179,32 @@
   overflow: hidden;
 }
 
+.live-pill {
+  border: 1px solid var(--gold-dark);
+  border-radius: 999px;
+  padding: 0.25rem 0.8rem;
+  font-size: 0.85rem;
+  letter-spacing: 1px;
+  color: var(--gold);
+  background: rgba(255, 215, 0, 0.08);
+}
+
+.starfield {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+.star-dot {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--gold);
+  animation: shimmer 2.4s ease-in-out infinite;
+}
+
 .title {
   font-size: clamp(2.4rem, 8vw, 6rem);
   color: var(--gold);
@@ -286,6 +312,34 @@
 .timer.danger {
   color: #ff5a5a;
   animation: timerPulse 1s infinite;
+}
+
+.result-pill {
+  margin-top: 0.8rem;
+  min-height: 1.3rem;
+}
+
+.result-pill.correct {
+  color: #87f5a0;
+}
+
+.result-pill.wrong {
+  color: var(--crimson-bright);
+}
+
+.live-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.live-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #39d353;
+  box-shadow: 0 0 10px rgba(57, 211, 83, 0.7);
+  animation: goldPulse 1.5s ease-in-out infinite;
 }
 
 .hint-slot {
