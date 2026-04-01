@@ -191,7 +191,7 @@ export default function Hunt() {
   if (loading) return <LoadingSpinner label="Loading clue" />;
 
   return (
-    <main className="page-shell hunt-grid rich-canvas">
+    <main className="page-shell hunt-grid rich-canvas full-hunt-layout">
       <div className="ambient-coin coin-a" aria-hidden>✦</div>
       <div className="ambient-coin coin-b" aria-hidden>✧</div>
       <div className="ambient-coin coin-c" aria-hidden>✦</div>
@@ -223,7 +223,7 @@ export default function Hunt() {
 
       <aside>
         <div className="pirate-card">
-          <h3>Clock</h3>
+          <h3>Countdown Clock</h3>
           <Timer elapsed={elapsed} />
           <p>Hints used: {hintsUsed}</p>
         </div>

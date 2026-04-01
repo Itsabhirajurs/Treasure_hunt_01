@@ -265,6 +265,11 @@
   position: relative;
 }
 
+.full-hunt-layout {
+  width: min(1650px, 98%);
+  min-height: calc(100vh - 96px);
+}
+
 .rich-canvas::before {
   content: "";
   position: absolute;
@@ -324,6 +329,41 @@
   margin-top: 0.6rem;
 }
 
+.progress-map-svg {
+  width: 100%;
+  height: 150px;
+  margin-top: 0.4rem;
+}
+
+.route-line {
+  fill: none;
+  stroke: url(#routeTint);
+  stroke-width: 4;
+  stroke-dasharray: 7 6;
+  animation: mapDotTrail 4s linear infinite;
+}
+
+.map-node-svg {
+  fill: #c8a96e;
+  stroke: #f4e4c1;
+  stroke-width: 2;
+}
+
+.map-node-svg.done {
+  fill: #ffd700;
+}
+
+.map-node-svg.active {
+  fill: #00ced1;
+  filter: drop-shadow(0 0 8px rgba(0, 206, 209, 0.7));
+}
+
+.map-node-text {
+  fill: #111;
+  font-weight: 700;
+  font-size: 12px;
+}
+
 .map-node {
   width: 34px;
   height: 34px;
@@ -346,6 +386,7 @@
 .timer {
   font-size: 2rem;
   font-weight: 700;
+  color: #39d353;
 }
 
 .timer.warning {
@@ -555,6 +596,11 @@
 @media (max-width: 900px) {
   .hunt-grid {
     grid-template-columns: 1fr;
+  }
+
+  .full-hunt-layout {
+    width: min(1000px, 95%);
+    min-height: auto;
   }
 
   .deck-widgets {
