@@ -26,10 +26,12 @@ export default function Hunt() {
   const [badge, setBadge] = useState(null);
   const [burst, setBurst] = useState(false);
   const [showMap, setShowMap] = useState(false);
-  const [chatInput, setChatInput] = useState("");
-  const [chatMessages, setChatMessages] = useState([]);
+  const [supportInput, setSupportInput] = useState("");
+  const [supportMessages, setSupportMessages] = useState([]);
   const [teamMsgInput, setTeamMsgInput] = useState("");
   const [teamMessages, setTeamMessages] = useState([]);
+  const [morale, setMorale] = useState(72);
+  const [compassState, setCompassState] = useState("NORTH-EAST");
 
   const round = state.team?.current_round || state.round || 1;
   const hintsUsed = useMemo(() => Object.keys(hints).length, [hints]);
@@ -69,6 +71,21 @@ export default function Hunt() {
       .channel(`team-chat-${state.team.id}`)
       .on("broadcast", { event: "team-message" }, ({ payload }) => {
         setTeamMessages((prev) => [...prev.slice(-29), payload]);
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [state.team?.id]);
+
+  useEffect(() => {
+    if (!state.team?.id) return;
+    const channel = supabase
+      .channel("support-live")
+      .on("broadcast", { event: "support-message" }, ({ payload }) => {
+        if (payload.team_id !== state.team.id) return;
+        setSupportMessages((prev) => [...prev.slice(-49), payload]);
       })
       .subscribe();
 
@@ -142,19 +159,23 @@ export default function Hunt() {
     }
   };
 
-  const askBot = async () => {
-    const prompt = chatInput.trim();
-    if (!prompt) return;
-    setChatMessages((prev) => [...prev, { role: "user", text: prompt }]);
-    setChatInput("");
+  const sendSupportMessage = async () => {
+    const text = supportInput.trim();
+    if (!text || !state.team?.id) return;
 
-    const res = await fetch(`${apiBase}/api/chatbot`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: prompt, team_name: state.team?.name || "Crew", round }),
-    });
-    const data = await res.json();
-    setChatMessages((prev) => [...prev, { role: "bot", text: data.reply || "No response from oracle" }]);
+    const payload = {
+      team_id: state.team.id,
+      team_name: state.team.name || "Crew",
+      sender: "team",
+      message: text,
+      at: new Date().toLocaleTimeString(),
+    };
+
+    const channel = supabase.channel("support-live");
+    await channel.subscribe();
+    await channel.send({ type: "broadcast", event: "support-message", payload });
+    setSupportInput("");
+    setSupportMessages((prev) => [...prev.slice(-49), payload]);
   };
 
   const sendTeamMessage = async () => {
@@ -170,7 +191,10 @@ export default function Hunt() {
   if (loading) return <LoadingSpinner label="Loading clue" />;
 
   return (
-    <main className="page-shell hunt-grid">
+    <main className="page-shell hunt-grid rich-canvas">
+      <div className="ambient-coin coin-a" aria-hidden>✦</div>
+      <div className="ambient-coin coin-b" aria-hidden>✧</div>
+      <div className="ambient-coin coin-c" aria-hidden>✦</div>
       <aside>
         <div className="pirate-card">
           <h2>{state.team?.name}</h2>
@@ -205,14 +229,16 @@ export default function Hunt() {
         </div>
         <HintSystem hints={hints} onReveal={revealHint} loadingHint={loadingHint} />
         <div className="pirate-card mini-chat">
-          <h3>Ask Oracle</h3>
+          <h3>Support Chat (Admin)</h3>
           <div className="chat-log">
-            {chatMessages.slice(-6).map((m, i) => (
-              <p key={`${m.role}-${i}`} className={m.role === "bot" ? "bot-line" : "user-line"}>{m.text}</p>
+            {supportMessages.slice(-8).map((m, i) => (
+              <p key={`${m.sender}-${m.at}-${i}`} className={m.sender === "admin" ? "bot-line" : "user-line"}>
+                <strong>{m.sender === "admin" ? "Admin" : "You"}</strong>: {m.message}
+              </p>
             ))}
           </div>
-          <input className="input-field" value={chatInput} onChange={(e) => setChatInput(e.target.value)} placeholder="Ask strategy, not final answer" />
-          <button className="gold-button" onClick={askBot}>Ask Gemini</button>
+          <input className="input-field" value={supportInput} onChange={(e) => setSupportInput(e.target.value)} placeholder="Ask for help from organizer" />
+          <button className="gold-button" onClick={sendSupportMessage}>Send to Admin</button>
         </div>
         <div className="pirate-card mini-chat">
           <h3>Team Chat</h3>
@@ -231,8 +257,27 @@ export default function Hunt() {
           <div className="badge-modal pirate-card" onClick={(e) => e.stopPropagation()}>
             <h2>Treasure Blueprint</h2>
             <svg viewBox="0 0 600 260" className="map-svg">
-              <rect x="10" y="10" width="580" height="240" rx="16" fill="#f4e4c1" stroke="#b8860b" strokeWidth="5" />
-              <path d="M60 180 C140 70, 230 220, 320 120 C390 40, 490 190, 540 90" stroke="#8b0000" strokeWidth="4" fill="none" strokeDasharray="8 8" />
+              <defs>
+                <linearGradient id="sea" x1="0" x2="1">
+                  <stop offset="0%" stopColor="#7ab4d6" />
+                  <stop offset="100%" stopColor="#35627f" />
+                </linearGradient>
+                <linearGradient id="island" x1="0" x2="0" y1="0" y2="1">
+                  <stop offset="0%" stopColor="#e8d9ae" />
+                  <stop offset="100%" stopColor="#b89b63" />
+                </linearGradient>
+              </defs>
+              <rect x="10" y="10" width="580" height="240" rx="16" fill="url(#sea)" stroke="#b8860b" strokeWidth="5" />
+              <ellipse cx="140" cy="84" rx="65" ry="36" fill="url(#island)" />
+              <ellipse cx="300" cy="178" rx="72" ry="42" fill="url(#island)" />
+              <ellipse cx="468" cy="86" rx="60" ry="32" fill="url(#island)" />
+              <path d="M60 195 C130 88, 216 226, 305 122 C386 32, 488 206, 546 98" stroke="#7a3b00" strokeWidth="4" fill="none" strokeDasharray="8 7" />
+              <g transform="translate(525,212)">
+                <circle r="24" fill="rgba(255,255,255,0.18)" stroke="#f4e4c1" />
+                <path d="M0 -20 L5 -5 L0 0 L-5 -5 Z" fill="#ffd700" />
+                <path d="M0 20 L5 5 L0 0 L-5 5 Z" fill="#8b0000" />
+                <text x="-4" y="-26" fill="#fff">N</text>
+              </g>
               {[1, 2, 3, 4, 5].map((r) => (
                 <g key={r} transform={`translate(${60 + r * 95},${170 - (r % 2) * 60})`}>
                   <circle r="14" fill={r < round ? "#ffd700" : r === round ? "#00ced1" : "#c8a96e"} />
@@ -247,6 +292,46 @@ export default function Hunt() {
 
       <BadgePopup badge={badge} onClose={() => setBadge(null)} />
       <ParticleEffect show={burst} />
+
+      <section className="pirate-card deck-widgets">
+        <article className="widget">
+          <h3>Compass Console</h3>
+          <p>Heading: <strong>{compassState}</strong></p>
+          <div className="widget-actions">
+            <button className="gold-button" onClick={() => setCompassState("NORTH")}>N</button>
+            <button className="gold-button" onClick={() => setCompassState("EAST")}>E</button>
+            <button className="gold-button" onClick={() => setCompassState("SOUTH")}>S</button>
+            <button className="gold-button" onClick={() => setCompassState("WEST")}>W</button>
+          </div>
+        </article>
+
+        <article className="widget">
+          <h3>Route Heat</h3>
+          <p>Intensity rises by round progression.</p>
+          <div className="heat-grid">
+            {Array.from({ length: 20 }, (_, i) => (
+              <span
+                key={i}
+                className={`heat-dot ${i < Math.min(20, round * 4) ? "active" : ""}`}
+              />
+            ))}
+          </div>
+        </article>
+
+        <article className="widget">
+          <h3>Crew Morale</h3>
+          <p>{morale}% motivated</p>
+          <input
+            type="range"
+            min="0"
+            max="100"
+            value={morale}
+            onChange={(e) => setMorale(Number(e.target.value))}
+            className="morale-slider"
+          />
+          <p className="small-note">Drag to rehearse pressure scenarios.</p>
+        </article>
+      </section>
     </main>
   );
 }

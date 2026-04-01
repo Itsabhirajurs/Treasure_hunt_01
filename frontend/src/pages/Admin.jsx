@@ -9,6 +9,9 @@ export default function Admin() {
   const [submissions, setSubmissions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [clock, setClock] = useState(new Date());
+  const [supportFeed, setSupportFeed] = useState([]);
+  const [replyText, setReplyText] = useState("");
+  const [targetTeam, setTargetTeam] = useState("");
 
   const loadData = async () => {
     const [{ data: t }, { data: s }] = await Promise.all([
@@ -32,12 +35,39 @@ export default function Admin() {
       .on("postgres_changes", { event: "*", schema: "public", table: "submissions" }, loadData)
       .subscribe();
 
+    const supportChannel = supabase
+      .channel("support-live")
+      .on("broadcast", { event: "support-message" }, ({ payload }) => {
+        setSupportFeed((prev) => [payload, ...prev.slice(0, 49)]);
+        if (payload.sender === "team") setTargetTeam(payload.team_id);
+      })
+      .subscribe();
+
     return () => {
       clearInterval(timer);
       clearInterval(refresh);
       supabase.removeChannel(channel);
+      supabase.removeChannel(supportChannel);
     };
   }, [isAuthenticated]);
+
+  const sendReply = async () => {
+    const text = replyText.trim();
+    if (!text || !targetTeam) return;
+    const team = teams.find((t) => t.id === targetTeam);
+    const payload = {
+      team_id: targetTeam,
+      team_name: team?.name || "Crew",
+      sender: "admin",
+      message: text,
+      at: new Date().toLocaleTimeString(),
+    };
+    const channel = supabase.channel("support-live");
+    await channel.subscribe();
+    await channel.send({ type: "broadcast", event: "support-message", payload });
+    setReplyText("");
+    setSupportFeed((prev) => [payload, ...prev.slice(0, 49)]);
+  };
 
   const stats = useMemo(() => {
     const correct = submissions.filter((s) => s.is_correct).length;
@@ -110,6 +140,26 @@ export default function Admin() {
             <button className="crimson-button" onClick={() => resetTeam(t.id)}>Reset Team</button>
           </div>
         ))}
+      </section>
+
+      <section className="pirate-card">
+        <h2>Support Inbox</h2>
+        <div className="chat-log">
+          {supportFeed.slice(0, 12).map((m, i) => (
+            <p key={`${m.team_id}-${m.at}-${i}`}>
+              <strong>{m.sender === "admin" ? "Admin" : m.team_name || "Team"}</strong>: {m.message}
+            </p>
+          ))}
+        </div>
+        <label>Reply Target Team</label>
+        <select className="input-field" value={targetTeam} onChange={(e) => setTargetTeam(e.target.value)}>
+          <option value="">Select team</option>
+          {teams.map((t) => (
+            <option key={t.id} value={t.id}>{t.name}</option>
+          ))}
+        </select>
+        <input className="input-field" value={replyText} onChange={(e) => setReplyText(e.target.value)} placeholder="Reply to selected team" />
+        <button className="gold-button" onClick={sendReply}>Send Reply</button>
       </section>
     </main>
   );

@@ -2,7 +2,7 @@ from flask import Blueprint, jsonify, request
 
 from config import get_supabase
 from services.anomaly_service import check_anomaly
-from services.gemini_service import answer_closeness, chatbot_reply, generate_hint, validate_answer
+from services.gemini_service import answer_closeness, generate_hint, validate_answer
 from services.scoring_service import calculate_score
 
 game_bp = Blueprint("game", __name__)
@@ -44,6 +44,14 @@ CLUES = [
         "difficulty": 5,
     },
 ]
+
+
+def ensure_support_table(supabase):
+    try:
+        supabase.table("support_messages").select("id").limit(1).execute()
+        return True
+    except Exception:
+        return False
 
 
 def clue_for_round(round_num):
@@ -202,15 +210,50 @@ def get_hint():
         return jsonify({"error": "Hint generation failed", "details": str(exc)}), 500
 
 
-@game_bp.post("/api/chatbot")
-def ask_chatbot():
+@game_bp.post("/api/chat/send")
+def send_support_message():
+    supabase = get_supabase()
+    if supabase is None:
+        return jsonify({"error": "Supabase not configured"}), 500
+    if not ensure_support_table(supabase):
+        return jsonify({"error": "support_messages table missing. Create it in Supabase."}), 500
+
     payload = request.get_json(silent=True) or {}
-    message = (payload.get("message") or "").strip()
+    team_id = payload.get("team_id")
     team_name = (payload.get("team_name") or "Crew").strip()
-    round_num = int(payload.get("round", 1))
+    message = (payload.get("message") or "").strip()
 
-    if not message:
-        return jsonify({"error": "message is required"}), 400
+    if not team_id or not message:
+        return jsonify({"error": "team_id and message are required"}), 400
 
-    reply = chatbot_reply(message, round_num, team_name)
-    return jsonify({"reply": reply})
+    row = {
+        "team_id": team_id,
+        "team_name": team_name,
+        "sender": "team",
+        "message": message,
+    }
+    inserted = supabase.table("support_messages").insert(row).execute()
+    return jsonify({"message": inserted.data[0] if inserted.data else row})
+
+
+@game_bp.get("/api/chat/messages")
+def get_support_messages():
+    supabase = get_supabase()
+    if supabase is None:
+        return jsonify({"error": "Supabase not configured"}), 500
+    if not ensure_support_table(supabase):
+        return jsonify({"messages": [], "warning": "support_messages table missing"})
+
+    team_id = request.args.get("team_id")
+    if not team_id:
+        return jsonify({"error": "team_id query parameter is required"}), 400
+
+    result = (
+        supabase.table("support_messages")
+        .select("*")
+        .eq("team_id", team_id)
+        .order("created_at", desc=False)
+        .limit(100)
+        .execute()
+    )
+    return jsonify({"messages": result.data or []})

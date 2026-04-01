@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, request
 
 from config import check_schema_ready, get_supabase
 
@@ -47,3 +47,53 @@ def get_stats():
             "submissions": submissions,
         }
     )
+
+
+def _ensure_support_table(supabase):
+    # Best-effort table setup for support chat in hackathon environments.
+    try:
+        supabase.table("support_messages").select("id").limit(1).execute()
+        return True
+    except Exception:
+        return False
+
+
+@admin_bp.post("/api/admin/chat/send")
+def admin_send_chat():
+    supabase = get_supabase()
+    if supabase is None:
+        return jsonify({"error": "Supabase not configured"}), 500
+    if not _ensure_support_table(supabase):
+        return jsonify({"error": "support_messages table missing. Create it in Supabase."}), 500
+
+    payload = request.get_json(silent=True) or {}
+    team_id = payload.get("team_id")
+    message = (payload.get("message") or "").strip()
+    if not team_id or not message:
+        return jsonify({"error": "team_id and message are required"}), 400
+
+    row = {
+        "team_id": team_id,
+        "sender": "admin",
+        "message": message,
+    }
+    inserted = supabase.table("support_messages").insert(row).execute()
+    return jsonify({"message": inserted.data[0] if inserted.data else row})
+
+
+@admin_bp.get("/api/admin/chat/messages")
+def admin_chat_messages():
+    supabase = get_supabase()
+    if supabase is None:
+        return jsonify({"error": "Supabase not configured"}), 500
+    if not _ensure_support_table(supabase):
+        return jsonify({"messages": [], "warning": "support_messages table missing"})
+
+    messages = (
+        supabase.table("support_messages")
+        .select("*")
+        .order("created_at", desc=True)
+        .limit(100)
+        .execute()
+    )
+    return jsonify({"messages": messages.data or []})
