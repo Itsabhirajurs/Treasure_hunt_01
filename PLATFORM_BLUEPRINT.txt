@@ -189,3 +189,41 @@ Victory:
 - Core platform scaffold and major logic are implemented.
 - GitHub repository updated with project files (excluding .env).
 - End-to-end API smoke flow has been validated after schema setup.
+
+====================================================
+12) NEW ENHANCEMENTS IMPLEMENTED (APR 1 UPDATE)
+====================================================
+- Hint reliability fix:
+   - Frontend now handles hint API failures gracefully with user feedback.
+   - Backend hint endpoint returns controlled JSON errors instead of breaking flow.
+
+- Advanced clock timeline:
+   - Timer now displays visual urgency tiers:
+      - Green (early)
+      - Yellow (mid)
+      - Red (critical)
+
+- Map blueprint modal:
+   - A map action button in Hunt opens a blueprint modal (SVG map view)
+   - Round markers visualize current and completed checkpoints.
+
+- Gemini-powered assistant chatbot:
+   - New endpoint: POST /api/chatbot
+   - Helps teams with strategy and motivation without leaking direct answers.
+
+- Team chat feature:
+   - Implemented with Supabase realtime broadcast channels scoped by team id.
+   - Team members connected to same team channel can exchange live messages.
+
+- Semantic near-match motivation:
+   - Backend computes answer closeness ratio for wrong answers.
+   - If close, response includes motivation line like:
+      "You are very close, sailor. One more precise try!"
+
+- Progress visualization in Hunt:
+   - Journey progress meter added in left panel.
+   - Displays percentage based on round completion.
+
+- UX smoothness:
+   - Hunt now loads next clue without hard page reload.
+   - Improves continuity and demo quality.

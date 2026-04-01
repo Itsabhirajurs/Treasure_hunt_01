@@ -2,7 +2,7 @@ from flask import Blueprint, jsonify, request
 
 from config import get_supabase
 from services.anomaly_service import check_anomaly
-from services.gemini_service import generate_hint, validate_answer
+from services.gemini_service import answer_closeness, chatbot_reply, generate_hint, validate_answer
 from services.scoring_service import calculate_score
 
 game_bp = Blueprint("game", __name__)
@@ -106,6 +106,7 @@ def submit_answer():
 
     verdict = validate_answer(clue["clue"], clue["answer"], user_answer)
     is_correct = bool(verdict.get("is_correct", False))
+    closeness = answer_closeness(user_answer, clue["answer"])
     score = (
         calculate_score(
             base=1000,
@@ -132,11 +133,19 @@ def submit_answer():
     ).execute()
 
     if not is_correct:
+        motivational = "Keep digging, captain."
+        if closeness >= 0.7:
+            motivational = "You are very close, sailor. One more precise try!"
+        elif closeness >= 0.5:
+            motivational = "Close waters. Refine your answer a little."
         return jsonify(
             {
                 "correct": False,
                 "score": 0,
                 "reason": verdict.get("reason", "Incorrect answer"),
+                "close_match": closeness >= 0.5,
+                "closeness": closeness,
+                "motivation": motivational,
                 "anomaly_flagged": anomaly["suspicious"],
             }
         )
@@ -186,5 +195,22 @@ def get_hint():
     if clue is None:
         return jsonify({"error": "Round not found"}), 404
 
-    hint = generate_hint(clue["clue"], clue["answer"], hint_num)
-    return jsonify({"hint": hint})
+    try:
+        hint = generate_hint(clue["clue"], clue["answer"], hint_num)
+        return jsonify({"hint": hint})
+    except Exception as exc:
+        return jsonify({"error": "Hint generation failed", "details": str(exc)}), 500
+
+
+@game_bp.post("/api/chatbot")
+def ask_chatbot():
+    payload = request.get_json(silent=True) or {}
+    message = (payload.get("message") or "").strip()
+    team_name = (payload.get("team_name") or "Crew").strip()
+    round_num = int(payload.get("round", 1))
+
+    if not message:
+        return jsonify({"error": "message is required"}), 400
+
+    reply = chatbot_reply(message, round_num, team_name)
+    return jsonify({"reply": reply})

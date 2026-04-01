@@ -1,4 +1,5 @@
 import json
+from difflib import SequenceMatcher
 
 import google.generativeai as genai
 
@@ -48,6 +49,14 @@ Respond ONLY with valid JSON, nothing else:
         }
 
 
+def answer_closeness(user_answer, correct_answer):
+    ua = (user_answer or "").strip().lower()
+    ca = (correct_answer or "").strip().lower()
+    if not ua or not ca:
+        return 0.0
+    return round(SequenceMatcher(None, ua, ca).ratio(), 3)
+
+
 def generate_hint(clue_text, correct_answer, hint_number):
     levels = ["extremely cryptic and vague", "somewhat helpful", "quite direct but not obvious"]
     level = levels[min(max(hint_number - 1, 0), 2)]
@@ -66,5 +75,36 @@ The answer is "{correct_answer}".
 Give a {level} hint. Under 20 words. Pirate flavor.
 Do NOT say the answer directly. Return only the hint text.
 '''
-    response = model.generate_content(prompt)
-    return response.text.strip()
+    try:
+        response = model.generate_content(prompt)
+        return response.text.strip()
+    except Exception:
+        fallbacks = [
+            "Look for the core concept, matey.",
+            "Focus on the subject this clue describes.",
+            f"It begins like this: {correct_answer[:2]}...",
+        ]
+        return fallbacks[min(max(hint_number - 1, 0), 2)]
+
+
+def chatbot_reply(user_message, round_number, team_name):
+    if model is None:
+        return "Oracle offline. Use hints and read the clue carefully, captain."
+
+    prompt = f'''
+You are the OJAS Treasure Hunt Pirate Assistant.
+Team: {team_name}
+Current round: {round_number}
+User asked: "{user_message}"
+
+Rules:
+- Never reveal direct final answers.
+- Give concise, motivating guidance.
+- If user asks strategy, provide 3 short actionable tips.
+- Keep pirate tone but clear.
+'''
+    try:
+        response = model.generate_content(prompt)
+        return response.text.strip()
+    except Exception:
+        return "Stormy seas in the oracle channel. Try again in a moment."
